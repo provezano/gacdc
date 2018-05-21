@@ -16,11 +16,14 @@ class Chromosome:
         self._first_stage = None
         self._second_stage = None
         self._strategy = ''
+        self._iter = 0
 
     def update_stats(self):
         self.compute_makespan_1()
         self.compute_release_date()
+        self.apply_available_1_rule_2()
         self.compute_makespan_2()
+
 
     def compute_release_date(self):
         for job2 in self.jobs_list_2:
@@ -145,6 +148,18 @@ class Chromosome:
     def id(self):
         return self._id
 
+    @id.setter
+    def id(self, value):
+        self._id = value
+
+    @property
+    def iter(self):
+        return self._iter
+
+    @id.setter
+    def iter(self, value):
+        self._iter = value
+
     @property
     def strategy(self):
         return self._strategy
@@ -183,11 +198,11 @@ class Chromosome:
 
     def apply_lpt_rule_1(self):
         self._strategy = 'LPT'
-        self._jobs_list_1.sort(reverse=True)
+        self._jobs_list_1.sort(key=lambda job: job.processing_time, reverse=True)
 
     def apply_spt_rule_1(self):
         self._strategy = 'SPT'
-        self._jobs_list_1.sort(reverse=False)
+        self._jobs_list_1.sort(key=lambda job: job.processing_time, reverse=False)
 
     def apply_lns_rule_1(self):
         self._strategy = 'LNS'
@@ -205,18 +220,23 @@ class Chromosome:
         self._jobs_list_2.sort(key=lambda job: job.processing_time + job.release_date, reverse=True)
 
     def apply_spt_rule_2(self):
+        self.apply_lpt_rule_2()
         self._jobs_list_2.sort(key=lambda job: job.processing_time + job.release_date, reverse=False)
 
     def apply_lns_rule_2(self):
+        self.apply_lpt_rule_2()
         self._jobs_list_2.sort(key=lambda job: job.total_predecessors())
 
     def apply_sns_rule_2(self):
+        self.apply_lpt_rule_2()
         self._jobs_list_2.sort(key=lambda job: job.total_predecessors(), reverse=True)
 
     def apply_available_1_rule_2(self):
+        self.apply_lpt_rule_2() # Ensures a tie-breaker with LPT rule
         self._jobs_list_2.sort(key=lambda job: job.release_date, reverse=False)
 
     def apply_available_2_rule_2(self):
+        self.apply_lpt_rule_2()
         self._jobs_list_2.sort(key=lambda job: job.release_date, reverse=True)
 
     def apply_random_rule_2(self):

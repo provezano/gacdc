@@ -1,180 +1,277 @@
-from Utils import Utils
-from Population import Population
-from UtilsGA import UtilsGA
-import random
-import numpy as np
-from numpy import cumsum
-from numpy.random import rand
+import sys, getopt
+
+import copy
 import matplotlib.pyplot as plt
+import numpy as np
+import random
+import time
+
+import scipy as sp
+import scipy.stats
+
+
+def mean_confidence_interval(data, confidence=0.95):
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * sp.stats.t._ppf((1 + confidence) / 2., n - 1)
+    #return m, m - h, m + h
+    return h
+
+
+from scipy.spatial.distance import pdist
+
+from Population import Population
+from Utils import Utils
+from UtilsAE import UtilsAE
+
+ordering_second_stage_options = ['LPT', 'SRT', 'LNS', 'SNS', 'AVA1', 'AVA2', 'Random', 'Random', 'Random', 'Random',
+                                 'Random', 'Random']
+convert_index = lambda i, j, n: n * j - j * (j + 1) / 2 + i - 1 - j
+
+
+def isNonIncreasing(l):
+    return sorted(l, reverse=True) == l
+
 
 def weighted_choice(weights, objects):
-    cs = cumsum(weights)
-    idx = sum(cs < rand())
-    if idx >= len(objects): idx = len(objects)-1;
+    cs = np.cumsum(weights)
+    idx = sum(cs < np.random.rand())
     return idx
 
-def genetic_algorithm(m1, m2, jobs_1, jobs_2, pop_size=100, crossover_rate=0.8, mutation_rate=0.2, generations=100):
-    random.seed(a=None)
 
-    t = generations
+def evolutionary_algorithm(m1, m2, jobs_1, jobs_2, pop_size=100, crossover_rate=0.8, mutation_rate=0.2, generations=100, total_selection=2):
+    random.seed(a=None)
 
     population = Population(m1, m2, jobs_1, jobs_2, pop_size)
 
-    population.compute_stats(0)
-    #population.print_population()
-    #population.print_stats()
+    crossover_functions = [UtilsAE.apply_ox_crossover, UtilsAE.apply_pmx_crossover]
+    mutation_functions = [UtilsAE.mutation_slice_front, UtilsAE.insertion_mutation, UtilsAE.inversion_mutation,
+                          UtilsAE.mutation_slice_random, UtilsAE.mutation_partition]#, UtilsAE.mutation_roll, UtilsAE.mutation_slice_back]
 
-    weigth_balance_crossover = 0.0001
-    weigth_balance_mutation = 0.0001
+    best_mutation = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+    prob_distribution_mutation = [v/sum(best_mutation.values()) for _,v in best_mutation.items()]
 
-    crossover_functions = [UtilsGA.apply_unif_crossover, UtilsGA.apply_pmx_crossover]
-    mutation_functions = [UtilsGA.mutation_roll, UtilsGA.mutation_swap, UtilsGA.mutation_slice_random]
-    #UtilsGA.mutation_slice_front, UtilsGA.mutation_slice_back
+    best_crossover = {0: 1, 1: 1}
+    prob_distribution_crossover = [v / sum(best_crossover.values()) for _, v in best_crossover.items()]
 
-    prob_distribution_mutation = [1.0/len(mutation_functions) for _ in range(len(mutation_functions))]
-    prob_distribution_crossover = [1.0/len(crossover_functions) for _ in range(len(crossover_functions))]
+    best_chromosome = copy.deepcopy(population.best_individual_2)
 
-    best_individual = population.best_individual_2
-    averages_1 = []
-    averages_2 = []
-    best_evolution_1 = []
-    best_evolution_2 = []
+    pop_mean_list = []
 
-    while t > 0:
-        print("Generation", generations-t, len(population.population))
 
+    # print("Mean dist:", np.mean(dist))
+    # print("Min dist:", np.min(dist))
+    # print("Max dist:", np.max(dist))
+    # print("Std dev dist:", np.std(dist))
+
+    for g in range(0, generations):
+        print("Generation:", g)
+
+        print("--- Population Stats ---")
+        population.compute_stats(g)
+        print("Mean:", population.mean_fitness_2)
+        print("Std. Dev.:", population.std_fitness_2)
+        print("Best Makespan:", best_chromosome.makespan_2)
+        print("PD Mutation:", prob_distribution_mutation)
+        print("PD Mutation:", prob_distribution_crossover)
         print("---")
-        print("Prob distribution Crossover:", prob_distribution_crossover)
-        print("Prob distribution Mutation :", prob_distribution_mutation)
-        print("---")
 
-        averages_1.append(population.mean_fitness)
-        averages_2.append(population.mean_fitness_2)
-        best_evolution_1.append(best_individual.makespan_1)
-        best_evolution_2.append(best_individual.makespan_2)
+        #population.print_population()
+        #input()
 
-        new_population = []
+        pop_mean_list.append(population.mean_fitness_2)
 
-        for i in range(pop_size//2):
+        changed = False
 
-            c1, c2 = UtilsGA.tournament_selection(population.population, 3, 2)
+        #selected_chromosomes = UtilsAE.uniform_selection(population.population, total_selection)
+        selected_chromosomes = UtilsAE.tournament_selection(population.population, total_chromosomes_tournament=7, total_chromosomes=total_selection)
 
-            old_c1_makespan_2, old_c2_makespan_2 = c1.makespan_2, c2.makespan_2
-            new_c1 = c1
-            new_c2 = c2
 
-            if random.random() < crossover_rate:
+        if random.random() < crossover_rate:
+            changed = True
+
+            for i in range(len(selected_chromosomes)):
                 c_index = weighted_choice(prob_distribution_crossover, crossover_functions)
-                #print(c_index)
-                new_c1, new_c2 = crossover_functions[c_index](c1, c2, 1.0)
+                for j in range(len(selected_chromosomes)):
+                    if i != j:
+                        c1, c2 = crossover_functions[c_index](selected_chromosomes[i], selected_chromosomes[j])
+                        c1.update_stats()
+                        c2.update_stats()
 
-                new_c1.update_stats()
-                new_c2.update_stats()
+                        best_c = c1 if c1.makespan_2 > c2.makespan_2 else c2
 
-                if (new_c1.makespan_2 + new_c2.makespan_2) - (old_c1_makespan_2 + old_c2_makespan_2) > 0:
-                #if new_c1.makespan_2 > old_c1_makespan_2 or new_c2.makespan_2 >old_c2_makespan_2:
-                    for i in range(len(prob_distribution_crossover)):
-                        if i == c_index:
-                            prob_distribution_crossover[i] += weigth_balance_crossover
-                            if prob_distribution_crossover[i] + weigth_balance_crossover > 1.0:
-                                prob_distribution_crossover[i] = 0.9
-                        else:
-                            prob_distribution_crossover[i] -= weigth_balance_crossover / (len(prob_distribution_crossover) - 1)
-                            if prob_distribution_crossover[i] < 0.0:
-                                prob_distribution_crossover[i] = 0.1
+                        if selected_chromosomes[i].makespan_2 - best_c.makespan_2 > 0:
+                            best_crossover[c_index] += 1
+                        elif selected_chromosomes[i].makespan_2 - best_c.makespan_2 < 0:
+                            if best_crossover[c_index] != 1:
+                                best_crossover[c_index] -= 1
 
-                old_c1_makespan_2, old_c2_makespan_2 = new_c1.makespan_2, new_c2.makespan_2
+                        selected_chromosomes[i] = best_c
+                        if best_c.makespan_2 < best_chromosome.makespan_2:
+                            best_chromosome = copy.deepcopy(best_c)
+                            best_chromosome.iter = g
 
-            if random.random() < mutation_rate:
+                prob_distribution_crossover = [v / sum(best_crossover.values()) for _, v in best_crossover.items()]
+
+
+
+        if random.random() < mutation_rate:
+            changed = True
+            for i in range(len(selected_chromosomes)):
                 m_index = weighted_choice(prob_distribution_mutation, mutation_functions)
 
-                new_c1 = mutation_functions[m_index](new_c1, mutation_rate = 1.0)
-                new_c2 = mutation_functions[m_index](new_c2, mutation_rate = 1.0)
+                c1 = mutation_functions[m_index](selected_chromosomes[i])
+                c1.update_stats()
 
-                new_c1.update_stats()
-                new_c2.update_stats()
+                if selected_chromosomes[i].makespan_2 - c1.makespan_2 > 0:
+                    best_mutation[m_index] += 1
+                elif selected_chromosomes[i].makespan_2 - c1.makespan_2 < 0:
+                    if best_mutation[m_index] != 1:
+                        best_mutation[m_index] -= 1
 
-                if (new_c1.makespan_2 + new_c2.makespan_2) - (old_c1_makespan_2 + old_c2_makespan_2) > 0:
-                #if new_c1.makespan_2 > old_c1_makespan_2 or new_c2.makespan_2 >old_c2_makespan_2:
-                    for i in range(len(prob_distribution_mutation)):
-                        if i == m_index:
-                            prob_distribution_mutation[i] += weigth_balance_mutation
-                            if prob_distribution_mutation[i] + weigth_balance_mutation > 1.0:
-                                prob_distribution_mutation[i] = 0.8
-                        else:
-                            prob_distribution_mutation[i] -= weigth_balance_mutation/(len(prob_distribution_mutation)-1)
-                            if prob_distribution_mutation[i] < 0.0:
-                                prob_distribution_mutation[i] = 0.1
+                selected_chromosomes[i] = c1
 
-                #new_population.append(new_c1)
-                #new_population.append(new_c2)
+                prob_distribution_mutation = [v / sum(best_mutation.values()) for _, v in best_mutation.items()]
 
-            new_population.append(new_c1)
-            new_population.append(new_c2)
+        #selected_chromosomes_die = UtilsAE.roulette_wheel_selection_survive(population.population, total_selection)
+        #selected_chromosomes_die = UtilsAE.uniform_selection(range(len(population.population)), total_selection)
+        if changed:
 
-        if population.best_individual_2.makespan_2 < best_individual.makespan_2:
-            best_individual = population.best_individual_2
+            selected_chromosomes_die = UtilsAE.tournament_selection_survive(population.population,
+                                                                          total_chromosomes_tournament=5,
+                                                                           total_chromosomes=total_selection)
 
-        #if best_individual not in new_population:
-        #        new_population.append(best_individual)
+            #selected_chromosomes_die = UtilsAE.uniform_selection(range(len(population.population)), total_selection)
+            for i in range(total_selection):
+                selected_chromosomes[i].id = population.population[selected_chromosomes_die[i]].id
+                population.population[selected_chromosomes_die[i]] = selected_chromosomes[i]
 
-        population.population = new_population
+            if population.best_individual_2.makespan_2 < best_chromosome.makespan_2:
+                best_chromosome = copy.deepcopy(population.population[population.best_individual_index_2])
+                best_chromosome.iter = g
 
-        population.update_stats()
-        print("Best so far:", best_individual.makespan_2)
-        #population.print_population()
+    """
+    print("Mean dist:", np.mean(dist), mean)
+    print("Min dist:", np.min(dist))
+    print("Max dist:", np.max(dist))
+    print("Std dev dist:", np.std(dist))
 
-        population.compute_stats(generations-t)
-        #population.print_stats()
-
-        t -= 1
-
-    return best_individual, averages_1, averages_2, best_evolution_1, best_evolution_2
-
-
-def main():
-    filenames = ["2maquinas/30jobs/40","4maquinas/30jobs/40","10maquinas/30jobs/40"]
-
-    for filename in filenames:
-        j1, j2, m1, m2, jobs_1, jobs_2 = Utils.read_from_file(
-            "./Intancias/"+filename+".dat")
-
-        for i in range(30):
-            best_individual, averages_1, averages_2, best_evolution_1, best_evolution_2 = \
-                genetic_algorithm(m1, m2, jobs_1, jobs_2, 100, 0.75, 0.25, 300)
-
-            #print(best_evolution_1)
-            with open("results_" + filename.replace("/", "") + ".txt", "a+") as file:
-                file.write(str(best_individual.makespan_1) + "\t" + str(best_individual.makespan_2) + "\t" + \
-                      str(np.mean(averages_1)) + "\t" + str(np.mean(averages_2)) + "\t" + \
-                      str(np.std(averages_1)) + "\t" + str(np.std(averages_2)) + "\t" + \
-                      str(np.mean(best_evolution_1)) + "\t" + str(np.mean(best_evolution_2)) + "\t" + \
-                      str(np.std(best_evolution_1)) + "\t" + str(np.std(best_evolution_2)) + "\n")
-
-    '''
-    plt.plot(averages_1, 'ro')
-    plt.ylabel('Média dos makespans do primeiro estágio da população')
+    x = ra nge(len(pop_mean_list))
+    plt.yscale('linear')
+    plt.plot(x, pop_mean_list, 'o--')
+    plt.title("Makespan average among generations")
     plt.show()
 
-    plt.plot(averages_2, 'ro')
-    plt.ylabel('Média dos makespans do segundo estágio da população')
+    x = range(len(dist_mean_list))
+    plt.yscale('linear')
+    plt.loglog(x, dist_mean_list, 'o--')
+    plt.title("Makespan average among generations")
     plt.show()
+    """
 
-    plt.plot(best_evolution_1, 'ro')
-    plt.ylabel('édia dos makespans do primeiro estágio dos melhores indivíduos')
-    plt.show()
-
-    plt.plot(best_evolution_2, 'ro')
-    plt.ylabel('Média dos makespans do segundo estágio dos melhores indivíduos')
-    plt.show()
-    '''
+    return best_chromosome, np.mean(pop_mean_list), np.std(pop_mean_list)
 
 
-    #print("First stage")
-    #result.print_first_stage()
-    #print("Second stage")
-    #result.print_second_stage()
+def main(argv):
+    maquinas = ["[2,4]maquinas", "[2,10]maquinas", "2maquinas", "4maquinas", "10maquinas"]
+    jobs = [str(n) + "jobs" for n in range(20,90,10)]
+    seed = [str(n) for n in range(25, 317, 1)]
 
-    
+    #maquinas = ["[2,4]maquinas"]
+    #jobs = ["80jobs"]
+    #seed = ["17"]
+
+
+    # Parameters
+    pop_size = 100
+    generations = 1000
+    total_experiments = 1
+    crossover_rate = 0.8
+    mutation_rate = 0.2
+    total_select = 2
+    filename = ""
+
+    try:
+        opts, args = getopt.getopt(argv, "hcr:mr:", ["crossover_rate=", "mutation_rate="])
+    except getopt.GetoptError:
+        print('GACDC.py -cr <crossover rate> -mr <mutation rate>')
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt == '-h':
+            print('GACDC.py -cr <crossover rate> -mr <mutation rate>')
+            sys.exit()
+        elif opt in ("-cr", "--mutation_rate"):
+            crossover_rate = arg
+        elif opt in ("-mr", "--crossover_rate"):
+            mutation_rate = arg
+
+    for m in maquinas:
+        with open("./results/general/results_" + m + "_.txt", "a+") as file:
+            file.write("GACDC - Population size: " + str(pop_size) + " - Generations: " + str(generations) + "\n")
+            file.write("Instance\tBest\tAverage\tStd. Dev.\tConf. Interval\tIter. Best\tAvg. Iter.\tIter. Std Dev\tAvg. Exec. Time\tStd. Dev. Exec. Time\n")
+
+    for j in jobs:
+        for s in seed:
+            for m in maquinas:
+                filename = m + "/" + j + "/" + s
+
+                j1, j2, m1, m2, jobs_1, jobs_2 = Utils.read_from_file(
+                    "/Users/coutinho/PycharmProjects/GACD/Dados/" + filename + ".dat")
+
+                best_individual_list_1 = []
+                best_individual_list_2 = []
+                iteration_list = []
+
+                pop_mean_list = []
+                pop_std_list = []
+                execution_times = []
+
+                with open("./results/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
+                    file.write("GACDC - Population size: " + str(pop_size) + " - Generations: " + str(generations) + "\n")
+                    file.write("ID\tMakespan(1)\tMakespan(2)\tAverage\tStd. Dev.\n")
+
+                for exp_num in range(total_experiments):
+                    start_time = time.time()
+                    best_individual, pop_mean, pop_std = evolutionary_algorithm(m1, m2, jobs_1, jobs_2, pop_size, crossover_rate, mutation_rate, generations, total_select)
+                    execution_time = time.time() - start_time
+
+                    best_individual_list_1.append(best_individual.makespan_1)
+                    best_individual_list_2.append(best_individual.makespan_2)
+                    iteration_list.append(best_individual.iter)
+                    execution_times.append(execution_time)
+                    pop_mean_list.append(pop_mean)
+                    pop_std_list.append(pop_std)
+
+                    with open("./results/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
+                        file.write(str(exp_num+1) + "\t"+ str(best_individual.makespan_1) + "\t" + str(best_individual.makespan_2) + "\t" + \
+                                   str(pop_mean) + "\t" + str(pop_std) + "\t" +str(execution_time) + "\n")
+
+                with open("./results/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
+                    file.write(
+                        "\nAverage\t" + str(np.mean(best_individual_list_1)) + "\t" + str(np.mean(best_individual_list_2)) + "\t" + \
+                        str(np.mean(pop_mean_list)) + "\t" + str(np.mean(pop_std_list)) + str(np.mean(execution_times)) + "\nStd. Dev.\t" + \
+                        str(np.std(best_individual_list_1)) + "\t" + str(np.std(best_individual_list_2)) + "\t" + \
+                        str(np.std(pop_mean_list)) + "\t" + str(np.std(pop_std_list)) + str(np.std(execution_times)) + "\nMin\t" + \
+                        str(np.min(best_individual_list_1)) + "\t" + str(np.min(best_individual_list_2)) + "\t" + \
+                        str(np.min(pop_mean_list)) + "\t" + str(np.min(pop_std_list)) + str(np.max(execution_times)) + "\nMax\t" + \
+                        str(np.max(best_individual_list_1)) + "\t" + str(np.max(best_individual_list_2)) + "\t" + \
+                        str(np.max(pop_mean_list)) + "\t" + str(np.max(pop_std_list)) + str(np.min(execution_times)) + "\nConf. Interval\t" + \
+                        str(mean_confidence_interval(best_individual_list_1)) + "\t" +
+                        str(mean_confidence_interval(best_individual_list_2)) + "\t"+
+                        str(mean_confidence_interval(pop_mean_list)) + "\t" + str(mean_confidence_interval(pop_std_list)) + \
+                        str(mean_confidence_interval(execution_times)) + "\n")
+
+                with open("./results/general/results_" + m + "_.txt", "a+") as file:
+                    file.write(filename.replace("/", "") + "\t" + str(np.min(best_individual_list_2)) + "\t" +
+                               str(np.mean(best_individual_list_2)) + "\t" + str(np.std(best_individual_list_2)) + "\t" +
+                               str(mean_confidence_interval(best_individual_list_2)) + "\t" +
+                               str(iteration_list[best_individual_list_2.index(np.min(best_individual_list_2))]) + "\t" +
+                               str(np.mean(iteration_list)) + "\t" +
+                               str(np.std(iteration_list)) + "\t" +
+                               str(np.mean(execution_times))+ "\t" +
+                               str(np.mean(execution_times))+ "\n")
+
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

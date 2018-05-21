@@ -59,9 +59,6 @@ class Job:
     def total_predecessors(self):
         return len(self.predecessors)
 
-    def __hash__(self):
-        return hash(str(self))
-
     def __eq__(self, other):
         if self is not None and other is not None:
             if self.id == other.id:
