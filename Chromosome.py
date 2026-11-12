@@ -156,7 +156,7 @@ class Chromosome:
     def iter(self):
         return self._iter
 
-    @id.setter
+    @iter.setter
     def iter(self, value):
         self._iter = value
 

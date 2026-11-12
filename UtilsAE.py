@@ -26,7 +26,7 @@ class UtilsAE:
 
         new_chromosome = copy.deepcopy(chromosome)
 
-        k = random.choice(range(len(new_chromosome.jobs_list_1-1)))
+        k = random.choice(range(len(new_chromosome.jobs_list_1)-1))
         size = random.choice(range(1, len(new_chromosome.jobs_list_1)-k))
 
         partial_reverse(new_chromosome.jobs_list_1, k, k+size)
@@ -97,10 +97,10 @@ class UtilsAE:
         chromosomes_selected = set()
 
         while len(chromosomes_selected) < total_chromosomes:
-            tournament_pop = random.sample(range(len(population)), total_chromosomes)
+            tournament_pop = random.sample(range(len(population)), total_chromosomes_tournament)
             tournament_pop = list(set(tournament_pop) - chromosomes_selected)
-            if tournament_pop is not []:
-                min_index = np.argmin([population[i].makespan_2 for i in tournament_pop])
+            if tournament_pop:
+                min_index = tournament_pop[np.argmin([population[i].makespan_2 for i in tournament_pop])]
                 chromosomes_selected.add(min_index)
 
         return [population[i] for i in chromosomes_selected]
@@ -110,10 +110,10 @@ class UtilsAE:
         chromosomes_selected = set()
 
         while len(chromosomes_selected) < total_chromosomes:
-            tournament_pop = random.sample(range(len(population)), total_chromosomes)
+            tournament_pop = random.sample(range(len(population)), total_chromosomes_tournament)
             tournament_pop = list(set(tournament_pop) - chromosomes_selected)
-            if tournament_pop is not []:
-                max_index = np.argmax([population[i].makespan_2 for i in tournament_pop])
+            if tournament_pop:
+                max_index = tournament_pop[np.argmax([population[i].makespan_2 for i in tournament_pop])]
                 chromosomes_selected.add(max_index)
 
         return list(chromosomes_selected)

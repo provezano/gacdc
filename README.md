@@ -38,9 +38,10 @@ finishes as early as possible (minimum makespan).
 
 `UtilsGA.py` holds an older set of operators and is not used by `GACDC.py`.
 
-Please read `CHANGES.md` before using the code: it lists issues found while
-preparing this version, including one that stops a run with the default
-settings.
+This is the 2018 research version of the code with a few fixes made in 2026,
+listed in `CHANGES.md`. The original upload is kept at the git tag
+`v2018-original`. The code has not been re-validated against the tables of the
+2025 paper.
 
 ## Install and run
 
@@ -67,13 +68,14 @@ Options (defaults are those set in `GACDC.main`):
 The output is one line per run: stage-1 makespan, makespan, and the mean and
 standard deviation of the population's mean fitness across generations.
 
-`GACDC.py` can still be run directly as before; its `main` loops over a fixed
-instance folder whose path is hard-coded.
+`python GACDC.py --data-dir Intancias` runs the original batch loop over every
+instance found under that folder and writes summaries to `./results/`.
 
-Smoke test:
+Tests (the last one runs 1000 generations three times, about 20 s):
 
 ```bash
 python tests/test_smoke.py
+python tests/test_fixes.py
 ```
 
 ## Instance format
@@ -93,19 +95,29 @@ n2 lines      processing times of the outbound jobs
 n2 rows of n1 values (0/1): entry (i, j) = 1 if outbound job i needs inbound job j
 ```
 
-`Intancias/` holds the 2-machine instances with 20 jobs, and one instance with
-30 jobs for 2, 4 and 10 machines. `Instancias.zip` holds about 900 instances
+`Intancias/` holds the 2-machine instances with 20 jobs and one `40.dat` file
+for each of 2, 4 and 10 machines. (The folder name is kept as in the original
+upload.) `Instancias.zip` holds about 900 instances
 (2, 4 and 10 machines, 20 jobs).
 
-## Stored results
+## Reference numbers
 
-`Resultados/` has 30 runs of the algorithm on instance `40` (30 inbound and 29
-outbound jobs) with 2, 4 and 10 machines per stage. The `.txt` files have no
-header; the column names are in `results_ga.xlsx`, which also has a summary
-sheet comparing GACDC with two heuristics (CDH and JLPTH) on the same three
-instances. These files were produced by an earlier version of the script (the
-current `main` writes a different format) and have not been regenerated with
-this version.
+Makespan of the best schedule found by `run_gacdc.py` with the default
+parameters (population 100, 1000 generations) on the three `40.dat` files,
+one run per seed. Python 3.12, numpy 2.5.4.
+
+| instance | jobs (in/out) | docks per stage | seed 3 | seed 4 | seed 7 |
+|---|---|---|---|---|---|
+| `Intancias/2maquinas/30jobs/40.dat` | 30 / 29 | 2 | 1434 | 1449 | 1447 |
+| `Intancias/4maquinas/30jobs/40.dat` | 20 / 19 | 4 | 478 | 481 | 477 |
+| `Intancias/10maquinas/30jobs/40.dat` | 30 / 29 | 10 | 341 | 338 | 334 |
+
+These are given to check an installation, not as results of the paper. Note
+that the file in `4maquinas/30jobs/` has 20 inbound jobs, not 30.
+
+## License
+
+MIT, see `LICENSE`.
 
 ## How to cite
 

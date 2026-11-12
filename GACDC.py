@@ -1,4 +1,4 @@
-import sys, getopt
+import sys, argparse, os
 
 import copy
 import matplotlib.pyplot as plt
@@ -192,23 +192,20 @@ def main(argv):
     total_select = 2
     filename = ""
 
-    try:
-        opts, args = getopt.getopt(argv, "hcr:mr:", ["crossover_rate=", "mutation_rate="])
-    except getopt.GetoptError:
-        print('GACDC.py -cr <crossover rate> -mr <mutation rate>')
-        sys.exit(2)
-
-    for opt, arg in opts:
-        if opt == '-h':
-            print('GACDC.py -cr <crossover rate> -mr <mutation rate>')
-            sys.exit()
-        elif opt in ("-cr", "--mutation_rate"):
-            crossover_rate = arg
-        elif opt in ("-mr", "--crossover_rate"):
-            mutation_rate = arg
+    parser = argparse.ArgumentParser(description="Run GACDC over a folder of instances.")
+    parser.add_argument("--data-dir", default="./Intancias",
+                        help="root folder with <machines>/<jobs>/<seed>.dat instances")
+    parser.add_argument("--results-dir", default="./results")
+    parser.add_argument("--crossover-rate", type=float, default=crossover_rate)
+    parser.add_argument("--mutation-rate", type=float, default=mutation_rate)
+    opts = parser.parse_args(argv)
+    crossover_rate = opts.crossover_rate
+    mutation_rate = opts.mutation_rate
+    os.makedirs(os.path.join(opts.results_dir, "general"), exist_ok=True)
+    os.makedirs(os.path.join(opts.results_dir, "individual"), exist_ok=True)
 
     for m in maquinas:
-        with open("./results/general/results_" + m + "_.txt", "a+") as file:
+        with open(opts.results_dir + "/general/results_" + m + "_.txt", "a+") as file:
             file.write("GACDC - Population size: " + str(pop_size) + " - Generations: " + str(generations) + "\n")
             file.write("Instance\tBest\tAverage\tStd. Dev.\tConf. Interval\tIter. Best\tAvg. Iter.\tIter. Std Dev\tAvg. Exec. Time\tStd. Dev. Exec. Time\n")
 
@@ -216,9 +213,11 @@ def main(argv):
         for s in seed:
             for m in maquinas:
                 filename = m + "/" + j + "/" + s
+                path = os.path.join(opts.data_dir, filename + ".dat")
+                if not os.path.exists(path):
+                    continue
 
-                j1, j2, m1, m2, jobs_1, jobs_2 = Utils.read_from_file(
-                    "/Users/coutinho/PycharmProjects/GACD/Dados/" + filename + ".dat")
+                j1, j2, m1, m2, jobs_1, jobs_2 = Utils.read_from_file(path)
 
                 best_individual_list_1 = []
                 best_individual_list_2 = []
@@ -228,9 +227,9 @@ def main(argv):
                 pop_std_list = []
                 execution_times = []
 
-                with open("./results/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
+                with open(opts.results_dir + "/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
                     file.write("GACDC - Population size: " + str(pop_size) + " - Generations: " + str(generations) + "\n")
-                    file.write("ID\tMakespan(1)\tMakespan(2)\tAverage\tStd. Dev.\n")
+                    file.write("ID\tMakespan(1)\tMakespan(2)\tAverage\tStd. Dev.\tExec. Time\n")
 
                 for exp_num in range(total_experiments):
                     start_time = time.time()
@@ -244,26 +243,26 @@ def main(argv):
                     pop_mean_list.append(pop_mean)
                     pop_std_list.append(pop_std)
 
-                    with open("./results/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
+                    with open(opts.results_dir + "/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
                         file.write(str(exp_num+1) + "\t"+ str(best_individual.makespan_1) + "\t" + str(best_individual.makespan_2) + "\t" + \
                                    str(pop_mean) + "\t" + str(pop_std) + "\t" +str(execution_time) + "\n")
 
-                with open("./results/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
+                with open(opts.results_dir + "/individual/results_" + filename.replace("/", "") + ".txt", "a+") as file:
                     file.write(
                         "\nAverage\t" + str(np.mean(best_individual_list_1)) + "\t" + str(np.mean(best_individual_list_2)) + "\t" + \
-                        str(np.mean(pop_mean_list)) + "\t" + str(np.mean(pop_std_list)) + str(np.mean(execution_times)) + "\nStd. Dev.\t" + \
+                        str(np.mean(pop_mean_list)) + "\t" + str(np.mean(pop_std_list)) + "\t" + str(np.mean(execution_times)) + "\nStd. Dev.\t" + \
                         str(np.std(best_individual_list_1)) + "\t" + str(np.std(best_individual_list_2)) + "\t" + \
-                        str(np.std(pop_mean_list)) + "\t" + str(np.std(pop_std_list)) + str(np.std(execution_times)) + "\nMin\t" + \
+                        str(np.std(pop_mean_list)) + "\t" + str(np.std(pop_std_list)) + "\t" + str(np.std(execution_times)) + "\nMin\t" + \
                         str(np.min(best_individual_list_1)) + "\t" + str(np.min(best_individual_list_2)) + "\t" + \
-                        str(np.min(pop_mean_list)) + "\t" + str(np.min(pop_std_list)) + str(np.max(execution_times)) + "\nMax\t" + \
+                        str(np.min(pop_mean_list)) + "\t" + str(np.min(pop_std_list)) + "\t" + str(np.min(execution_times)) + "\nMax\t" + \
                         str(np.max(best_individual_list_1)) + "\t" + str(np.max(best_individual_list_2)) + "\t" + \
-                        str(np.max(pop_mean_list)) + "\t" + str(np.max(pop_std_list)) + str(np.min(execution_times)) + "\nConf. Interval\t" + \
+                        str(np.max(pop_mean_list)) + "\t" + str(np.max(pop_std_list)) + "\t" + str(np.max(execution_times)) + "\nConf. Interval\t" + \
                         str(mean_confidence_interval(best_individual_list_1)) + "\t" +
                         str(mean_confidence_interval(best_individual_list_2)) + "\t"+
-                        str(mean_confidence_interval(pop_mean_list)) + "\t" + str(mean_confidence_interval(pop_std_list)) + \
+                        str(mean_confidence_interval(pop_mean_list)) + "\t" + str(mean_confidence_interval(pop_std_list)) + "\t" + \
                         str(mean_confidence_interval(execution_times)) + "\n")
 
-                with open("./results/general/results_" + m + "_.txt", "a+") as file:
+                with open(opts.results_dir + "/general/results_" + m + "_.txt", "a+") as file:
                     file.write(filename.replace("/", "") + "\t" + str(np.min(best_individual_list_2)) + "\t" +
                                str(np.mean(best_individual_list_2)) + "\t" + str(np.std(best_individual_list_2)) + "\t" +
                                str(mean_confidence_interval(best_individual_list_2)) + "\t" +
@@ -271,7 +270,7 @@ def main(argv):
                                str(np.mean(iteration_list)) + "\t" +
                                str(np.std(iteration_list)) + "\t" +
                                str(np.mean(execution_times))+ "\t" +
-                               str(np.mean(execution_times))+ "\n")
+                               str(np.std(execution_times))+ "\n")
 
 if __name__ == "__main__":
     main(sys.argv[1:])

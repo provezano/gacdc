@@ -113,20 +113,18 @@ class Population:
             makespans.append(self._population[i]._makespan_1)
             makespans_2.append(self._population[i]._makespan_2)
 
-        #stats
-        if self._best_fitness != min_makespan_1:
-            self._best_fitness = min_makespan_1
-            self._best_individual_index = min_index
-            self._mean_fitness = np.mean(makespans)
-            self._std_fitness = np.std(makespans)
+        # stats (updated every generation)
+        self._best_fitness = min_makespan_1
+        self._best_individual_index = min_index
+        self._mean_fitness = np.mean(makespans)
+        self._std_fitness = np.std(makespans)
 
-        # stats
         if self._best_fitness_2 != min_makespan_2:
-            self._best_fitness_2 = min_makespan_2
-            self._best_individual_index_2 = min_index_2
-            self._mean_fitness_2 = np.mean(makespans_2)
-            self._std_fitness_2 = np.std(makespans_2)
             self._best_fit_iter = iter
+        self._best_fitness_2 = min_makespan_2
+        self._best_individual_index_2 = min_index_2
+        self._mean_fitness_2 = np.mean(makespans_2)
+        self._std_fitness_2 = np.std(makespans_2)
 
     def update_stats(self):
         for p in self._population:

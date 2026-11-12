@@ -1,8 +1,6 @@
 """Smoke test: one small instance, a few generations, fixed seed.
 
 Run from the repository root:  python -m unittest tests.test_smoke
-Seed 3 is used because, with these settings, it does not draw the
-inversion mutation, which currently raises a TypeError (see CHANGES.md).
 """
 import contextlib
 import io
