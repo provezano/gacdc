@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the article below."
+title: "GACDC: genetic algorithm for truck scheduling in multi-dock cross-docking centers"
+type: software
+repository-code: "https://github.com/provezano/gacdc"
+authors:
+  - family-names: Nogueira
+    given-names: Thiago Henrique
+  - family-names: Coutinho
+    given-names: Felipe Provezano
+    orcid: "https://orcid.org/0000-0001-7206-5856"
+  - family-names: Peixoto
+    given-names: Maria Gabriela Mendonça
+  - family-names: Carrano
+    given-names: Eduardo Gontijo
+  - family-names: Ravetti
+    given-names: Martín Gómez
+preferred-citation:
+  type: article
+  title: "Evolutionary algorithm framework for optimizing truck scheduling in multi-dock truck cross-docking centers"
+  journal: "Evolutionary Intelligence"
+  volume: 18
+  issue: 1
+  start: 2
+  year: 2025
+  doi: "10.1007/s12065-024-00992-x"
+  authors:
+    - family-names: Nogueira
+      given-names: Thiago Henrique
+    - family-names: Coutinho
+      given-names: Felipe Provezano
+      orcid: "https://orcid.org/0000-0001-7206-5856"
+    - family-names: Peixoto
+      given-names: Maria Gabriela Mendonça
+    - family-names: Carrano
+      given-names: Eduardo Gontijo
+    - family-names: Ravetti
+      given-names: Martín Gómez
