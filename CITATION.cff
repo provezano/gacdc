@@ -3,6 +3,7 @@ message: "If you use this code, please cite the article below."
 title: "GACDC: genetic algorithm for truck scheduling in multi-dock cross-docking centers"
 type: software
 repository-code: "https://github.com/provezano/gacdc"
+license: MIT
 authors:
   - family-names: Nogueira
     given-names: Thiago Henrique
